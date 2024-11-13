@@ -1,8 +1,5 @@
 use flate2::{self, FlushDecompress, Status};
-#[allow(unused_imports)]
 use std::env;
-use std::error::Error;
-#[allow(unused_imports)]
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -60,7 +57,7 @@ fn main() {
 
             let file_content = match read_file_contents(&hash_path) {
                 Ok(content) => content,
-                Err(error) => panic!("Failed to read content from hash file"),
+                Err(_error) => panic!("Failed to read content from hash file: {}", _error),
             };
 
             // decompress it Zlib/flate2
@@ -91,15 +88,15 @@ fn main() {
             // extract [[type, length] , [content]]
             let parts: Vec<&[u8]> = uncompressed_content.split(|&x| x == 0).collect();
 
-            let (metadata, data) = match parts.as_slice() {
+            let (_, data) = match parts.as_slice() {
                 [metadata, data, ..] => (metadata, data),
                 _ => panic!("Expected at least two parts after splitting by zero byte"),
             };
 
-            let metadata_string = match String::from_utf8(metadata.to_vec()) {
-                Ok(string) => string,
-                Err(error) => panic!("Failed to convert metadata to string: {}", error),
-            };
+            // let metadata_string = match String::from_utf8(metadata.to_vec()) {
+            //     Ok(string) => string,
+            //     Err(error) => panic!("Failed to convert metadata to string: {}", error),
+            // };
 
             // Though this works, it doesn't leverage on the data size input
             let data_string = match String::from_utf8(data.to_vec()) {
