@@ -1,7 +1,9 @@
 #[allow(unused_imports)]
 use std::env;
+use std::error::Error;
 #[allow(unused_imports)]
 use std::fs;
+use std::io;
 use std::path::Path;
 
 fn main() {
@@ -54,6 +56,13 @@ fn main() {
             }
 
             // load data from file
+            let string_content = read_file_contents(&hash_path);
+
+            // handle this Result better
+            if string_content.is_err() {
+                panic!("Failed to read content from hash file")
+            }
+            println!("{:?}", string_content);
 
             // decompress it Zlib/flate2
 
@@ -65,4 +74,10 @@ fn main() {
         }
         _ => println!("unknown command: {}", args[1]),
     }
+}
+
+// TODO: Check if we could use the same struct to verify the existence + read content (File::open + file.read_to_string)
+fn read_file_contents(path: &str) -> Result<String, io::Error> {
+    let contents = fs::read_to_string(path)?;
+    Ok(contents)
 }
