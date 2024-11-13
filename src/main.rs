@@ -1,3 +1,4 @@
+use flate2::{self, Status};
 #[allow(unused_imports)]
 use std::env;
 use std::error::Error;
@@ -56,16 +57,37 @@ fn main() {
             }
 
             // load data from file
-            let string_content = read_file_contents(&hash_path);
+            let mut file_content: Vec<u8>;
 
-            // handle this Result better
-            if string_content.is_err() {
-                panic!("Failed to read content from hash file")
+            // Improve? Memory free
+            // Q: Can this be wrapped with {} so the read_result gets free once file_content asserted and updated?
+            let read_result = read_file_contents(&hash_path);
+            match read_result {
+                Ok(content) => file_content = content,
+                Err(error) => panic!("Failed to read content from hash file"),
             }
-            println!("{:?}", string_content);
+
+            println!("{:?}", file_content);
 
             // decompress it Zlib/flate2
+            let mut decompressor = flate2::Decompress::new(true);
+            let mut uncompressed_content: Vec<u8> = Vec::new();
+            let decompress_result = decompressor.decompress(
+                &file_content,
+                &mut uncompressed_content,
+                flate2::FlushDecompress::Finish,
+            );
+            match decompress_result {
+                Ok(_) => {}
+                Err(_) => panic!("Failed to decompress file content"),
+            }
 
+            let string_content = match String::from_utf8(uncompressed_content) {
+                Ok(string) => string,
+                Err(error) => panic!("Failed to convert uncompressed u8 array to string"),
+            };
+
+            println!("{}", string_content);
             // extract type, length and content
 
             // print content
@@ -77,7 +99,7 @@ fn main() {
 }
 
 // TODO: Check if we could use the same struct to verify the existence + read content (File::open + file.read_to_string)
-fn read_file_contents(path: &str) -> Result<String, io::Error> {
-    let contents = fs::read_to_string(path)?;
+fn read_file_contents(path: &str) -> Result<Vec<u8>, io::Error> {
+    let contents = fs::read(path)?;
     Ok(contents)
 }
