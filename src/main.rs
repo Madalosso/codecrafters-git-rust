@@ -57,30 +57,27 @@ fn main() {
             }
 
             // load data from file
-            let mut file_content: Vec<u8>;
+            // let mut file_content: Vec<u8>;
 
-            // Improve? Memory free
-            // Q: Can this be wrapped with {} so the read_result gets free once file_content asserted and updated?
-            let read_result = read_file_contents(&hash_path);
-            match read_result {
-                Ok(content) => file_content = content,
+            let file_content = match read_file_contents(&hash_path) {
+                Ok(content) => content,
                 Err(error) => panic!("Failed to read content from hash file"),
-            }
+            };
 
             println!("{:?}", file_content);
 
             // decompress it Zlib/flate2
             let mut decompressor = flate2::Decompress::new(true);
             let mut uncompressed_content: Vec<u8> = Vec::new();
-            let decompress_result = decompressor.decompress(
+
+            match decompressor.decompress(
                 &file_content,
                 &mut uncompressed_content,
                 flate2::FlushDecompress::Finish,
-            );
-            match decompress_result {
-                Ok(_) => {}
+            ) {
                 Err(_) => panic!("Failed to decompress file content"),
-            }
+                Ok(_) => {}
+            };
 
             let string_content = match String::from_utf8(uncompressed_content) {
                 Ok(string) => string,
