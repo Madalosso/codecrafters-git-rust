@@ -104,7 +104,7 @@ fn main() {
 
             // Check: Add compilation conditional tags so it's easy to switch between debug and "release mode"
             // println!("{}", metadata_string);
-            println!("{}", data_string);
+            print!("{}", data_string);
         }
         _ => println!("unknown command: {}", args[1]),
     }
