@@ -45,7 +45,6 @@ fn main() {
 
             // STUDY: Why this won't generate an issue? (what if hash provide has length == 1?)
             let hash_path = format!("{}/{}/{}", GIT_OBJECTS_PATH, &hash[0..2], &hash[2..]);
-            println!("{}", hash_path);
 
             //check file existence
             let file = Path::new(&hash_path);
@@ -64,32 +63,48 @@ fn main() {
                 Err(error) => panic!("Failed to read content from hash file"),
             };
 
-            println!("{:?}", file_content);
-
             // decompress it Zlib/flate2
             let mut decompressor = flate2::Decompress::new(true);
-            let mut uncompressed_content: Vec<u8> = Vec::new();
+
+            // WRONG! assuming that the size will be the decompressed size.
+            // Address this
+            let mut uncompressed_content: Vec<u8> = vec![0; file_content.len()];
 
             match decompressor.decompress(
                 &file_content,
                 &mut uncompressed_content,
-                flate2::FlushDecompress::Finish,
+                flate2::FlushDecompress::None,
             ) {
                 Err(_) => panic!("Failed to decompress file content"),
                 Ok(_) => {}
             };
 
-            let string_content = match String::from_utf8(uncompressed_content) {
-                Ok(string) => string,
-                Err(error) => panic!("Failed to convert uncompressed u8 array to string"),
+            // Split by byte 0 and
+            // extract type, length and content
+            let parts: Vec<&[u8]> = uncompressed_content.split(|&x| x == 0).collect();
+
+            // let metadata = parts[0];
+            // let data = parts[1];
+            // Alternative
+            let (metadata, data) = match parts.as_slice() {
+                [metadata, data, ..] => (metadata, data),
+                _ => panic!("Expected at least two parts after splitting by zero byte"),
             };
 
-            println!("{}", string_content);
-            // extract type, length and content
+            let metadata_string = match String::from_utf8(metadata.to_vec()) {
+                Ok(string) => string,
+                Err(error) => panic!("Failed to convert metadata to string: {}", error),
+            };
 
-            // print content
-            let content = "";
-            print!("{}", content)
+            // Though this works, it doesn't leverage on the data size input
+            let data_string = match String::from_utf8(data.to_vec()) {
+                Ok(string) => string,
+                Err(error) => panic!("Failed to convert data to string: {}", error),
+            };
+
+            // Check: Add compilation conditional tags so it's easy to switch between debug and "release mode"
+            // println!("{}", metadata_string);
+            println!("{}", data_string);
         }
         _ => println!("unknown command: {}", args[1]),
     }
