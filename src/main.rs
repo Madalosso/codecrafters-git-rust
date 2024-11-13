@@ -1,4 +1,4 @@
-use flate2::{self, Status};
+use flate2::{self, FlushDecompress, Status};
 #[allow(unused_imports)]
 use std::env;
 use std::error::Error;
@@ -65,27 +65,32 @@ fn main() {
 
             // decompress it Zlib/flate2
             let mut decompressor = flate2::Decompress::new(true);
+            let mut uncompressed_content: Vec<u8> = Vec::new();
 
-            // WRONG! assuming that the size will be the decompressed size.
-            // Address this
-            let mut uncompressed_content: Vec<u8> = vec![0; file_content.len()];
-
-            match decompressor.decompress(
-                &file_content,
-                &mut uncompressed_content,
-                flate2::FlushDecompress::None,
-            ) {
-                Err(_) => panic!("Failed to decompress file content"),
-                Ok(_) => {}
-            };
-
+            // Q: Would make sense to add this on a block so the buffer gets free once leaving the block?
+            let mut buffer: Vec<u8> = vec![0; 4096];
+            loop {
+                match decompressor.decompress(&file_content, &mut buffer, FlushDecompress::None) {
+                    Ok(Status::StreamEnd) => {
+                        uncompressed_content
+                            .extend_from_slice(&buffer[..decompressor.total_out() as usize]);
+                        break;
+                    }
+                    Ok(Status::Ok) => {
+                        uncompressed_content
+                            .extend_from_slice(&buffer[..decompressor.total_out() as usize]);
+                        buffer.resize(buffer.len() * 2, 0); // Double the buffer size
+                    }
+                    Ok(Status::BufError) => {
+                        panic!("Failed to decompress file content")
+                    }
+                    Err(error) => panic!("Failed to decompress file content: {}", error),
+                }
+            }
             // Split by byte 0 and
-            // extract type, length and content
+            // extract [[type, length] , [content]]
             let parts: Vec<&[u8]> = uncompressed_content.split(|&x| x == 0).collect();
 
-            // let metadata = parts[0];
-            // let data = parts[1];
-            // Alternative
             let (metadata, data) = match parts.as_slice() {
                 [metadata, data, ..] => (metadata, data),
                 _ => panic!("Expected at least two parts after splitting by zero byte"),
